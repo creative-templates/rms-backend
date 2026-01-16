@@ -14,6 +14,7 @@ import com.restaurant.ms.auth.services.AuthService;
 import com.restaurant.ms.core.models.User;
 import com.restaurant.ms.core.payloads.GeneralResponse;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -24,17 +25,20 @@ public class AuthController {
   private final AuthService authService;
 
   @PostMapping("register")
-  public ResponseEntity<GeneralResponse> register(@Valid @RequestBody RegisterAccountDto newAccount) {
+  public ResponseEntity<GeneralResponse> register(@Valid @RequestBody RegisterAccountDto newAccount,
+      HttpServletRequest request) {
     User response = authService.register(newAccount.toUser());
+    String appUrl = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort();
+    authService.sendRegistrationConfirmation(response, appUrl, request.getLocale());
 
     return ResponseEntity.ok().body(new GeneralResponse(response));
   }
 
   @GetMapping("activate-account")
   public ResponseEntity<GeneralResponse> activateAccount(@RequestParam("token") String token) {
-    String reponse = authService.activateAccount(token);
+    authService.activateAccount(token);
 
-    return ResponseEntity.ok().body(new GeneralResponse(reponse));
+    return ResponseEntity.ok().body(new GeneralResponse("Your account is activated"));
   }
 
 

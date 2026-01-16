@@ -6,11 +6,10 @@ import com.restaurant.ms.core.models.User;
 import com.restaurant.ms.core.roles.ERole;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
-@AllArgsConstructor
 @PasswordMatches
 public class RegisterAccountDto {
   @NotBlank
@@ -32,7 +31,9 @@ public class RegisterAccountDto {
   @NotBlank
   private String confirmPassword;
 
+  @NotNull
   private ERole role = ERole.CUSTOMER;
+
 
   private String tel;
 
