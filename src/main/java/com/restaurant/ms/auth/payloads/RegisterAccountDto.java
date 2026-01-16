@@ -10,7 +10,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
-@PasswordMatches
+@PasswordMatches(passwordField = "password", confirmPasswordField = "confirmPassword")
 public class RegisterAccountDto {
   @NotBlank
   private String firstname;

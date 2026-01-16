@@ -53,8 +53,8 @@ public class User {
 
   private String tel;
 
-  @Column(name = "enabled")
-  private boolean enabled = false;
+  @Column(name = "verifiedEmail")
+  private boolean verifiedEmail = false;
 
   public String getFullname() {
     return this.firstName + " " + this.lastName;
