@@ -1,9 +1,9 @@
 package com.restaurant.ms.core.services;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Map;
-
-import javax.crypto.SecretKey;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,25 +15,22 @@ import io.jsonwebtoken.security.Keys;
 @Service
 public class TokenService {
 
-  private final SecretKey signingKey;
+  @Value("${rms.app.jwtSecret}")
+  private String jwtSecret;
 
-  public TokenService(@Value("${rms.app.jwtSecret}") String jwtSecret) {
-    this.signingKey = Keys.hmacShaKeyFor(jwtSecret.getBytes());
-  }
-
-  public String generateToken(Map<String, Object> claims, String username, Integer expirationTime) {
-      return Jwts.builder()
-          .claims(claims)
-          .subject(username)
-          .issuedAt(new Date(System.currentTimeMillis()))
-          .expiration(new Date(System.currentTimeMillis() + expirationTime * 3600000))
-          .signWith(signingKey)
-          .compact();
+  public String generateToken(Map<String, Object> claims, String subject, long minutes) {
+    return Jwts.builder()
+        .claims(claims)
+        .subject(subject)
+        .issuedAt(new Date())
+        .expiration(Date.from(Instant.now().plus(minutes, ChronoUnit.MINUTES)))
+        .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()))
+        .compact();
     }
 
     public Claims extractAllClaims(String token) {
       return Jwts.parser()
-          .verifyWith(signingKey)
+          .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()))
           .build()
           .parseSignedClaims(token)
           .getPayload();

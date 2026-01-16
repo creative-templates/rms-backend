@@ -1,6 +1,6 @@
 package com.restaurant.ms.core.services;
 
-import java.util.Collections;
+import java.util.List;
 
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -38,7 +38,7 @@ public class MyUserDetailsService implements UserDetailsService {
       accountNonExpired,
       credentailsNonExpired,
       accountNonLocked,
-        Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+        List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()))
     );
   }
 }
