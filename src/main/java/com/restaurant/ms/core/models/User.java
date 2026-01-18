@@ -66,6 +66,11 @@ public class User implements UserDetails {
   @Column(name = "verified_email", nullable = false)
   private boolean verifiedEmail = false;
 
+  @Column(name = "profile_picture")
+  private String profilePictire;
+
+  private boolean enabled;
+
   public String getFullname() {
     return this.firstName + " " + this.lastName;
   }
@@ -74,4 +79,25 @@ public class User implements UserDetails {
   public Collection<? extends GrantedAuthority> getAuthorities() {
     return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
   }
+
+  @Override
+  public boolean isEnabled() {
+    return this.enabled;
+  }
+
+  @Override
+  public boolean isAccountNonExpired() {
+    return true;
+  }
+
+  @Override
+  public boolean isAccountNonLocked() {
+    return true;
+  }
+
+  @Override
+  public boolean isCredentialsNonExpired() {
+    return true;
+  }
+
 }

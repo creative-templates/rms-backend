@@ -1,6 +1,5 @@
 package com.restaurant.ms.auth.services;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,8 +15,8 @@ import org.springframework.stereotype.Service;
 import com.restaurant.ms.auth.enums.EStatus;
 import com.restaurant.ms.auth.models.VerificationCode;
 import com.restaurant.ms.auth.payloads.AuthenticatedUserDto;
+import com.restaurant.ms.auth.payloads.CreateAccountDto;
 import com.restaurant.ms.auth.payloads.LoginAccountDto;
-import com.restaurant.ms.auth.payloads.RegisterAccountDto;
 import com.restaurant.ms.auth.repositories.VerificationCodeRepository;
 import com.restaurant.ms.core.exceptions.GeneralException;
 import com.restaurant.ms.core.models.User;
@@ -39,34 +38,41 @@ public class AuthService {
   private final AuthenticationManager authenticationManager;
   private final VerificationCodeRepository verificationCodeRepository;
 
-  public void createUser(RegisterAccountDto dto, HttpServletRequest request) {
-    if (userRepository.findByUsername(dto.getUsername()) != null) {
+  public void createUser(CreateAccountDto dto, HttpServletRequest request) {
+    User existingUser = userRepository.findByUsername(dto.getUsername()).orElse(null);
+
+    if (existingUser != null) {
       throw new GeneralException("Username already exists");
     }
 
     User user = dto.toUser();
-    user.setPassword(passwordEncoder.encode(user.getPassword()));
     userRepository.save(user);
 
-    sendVerificationEmail(user, request);
+    sendAccountActivationLink(user, request);
   }
 
   public AuthenticatedUserDto login(LoginAccountDto dto, HttpServletResponse response) {
+    User user = userRepository.findByUsername(dto.getUsername())
+        .orElseThrow(() -> new GeneralException("Invalid Credentails"));
+
+    if (!user.isEnabled()) {
+      throw new GeneralException("Account is disabled. Please activate your account or contact customer care");
+    }
     Authentication authentication = authenticationManager
         .authenticate(
             new UsernamePasswordAuthenticationToken(dto.getUsername(), dto.getPassword()));
-    User user = userRepository.findByUsername(dto.getUsername())
-        .orElseThrow(() -> new GeneralException("Invalid Credentails"));
 
     setRefreshCookie(response, user);
     String accessToken = generateAccessToken(user);
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
 
+    System.out.println("Roles: " + authentication.getAuthorities());
+
     return new AuthenticatedUserDto(user, accessToken);
   }
 
-  public void verifyEmail(String token) {
+  public void activateAccount(String token, String passsword) {
     if (!tokenService.validateToken(token)) {
       throw new GeneralException("Token expired");
     }
@@ -75,6 +81,8 @@ public class AuthService {
         .orElseThrow(() -> new GeneralException("Invalid token"));
 
     user.setVerifiedEmail(true);
+    user.setEnabled(true);
+    user.setPassword(passwordEncoder.encode(passsword));
     userRepository.save(user);
   }
 
@@ -97,7 +105,7 @@ public class AuthService {
 
   public void verifyOtp(String username, String code) {
     User user = userRepository.findByUsername(username).orElseThrow(() -> new GeneralException("Invalid otp"));
-    
+
     VerificationCode verificationCode = verificationCodeRepository.findByUserAndCodeAndType(user, code,
         EStatus.FORGOT_PASSWORD);
 
@@ -110,7 +118,7 @@ public class AuthService {
 
   public void resetPassword(String username, String password, String code) {
     User user = userRepository.findByUsername(username).orElseThrow(() -> new GeneralException("Invalid token"));
-    
+
     VerificationCode verificationCode = verificationCodeRepository.findByUserAndCodeAndType(user, code,
         EStatus.RESET_PASSWORD);
 
@@ -136,42 +144,39 @@ public class AuthService {
     return new AuthenticatedUserDto(user, generateAccessToken(user));
   }
 
-  public void sendVerificationEmail(User user, HttpServletRequest request) {
+  public void sendAccountActivationLink(User user, HttpServletRequest request) {
     Map<String, Object> claims = new HashMap<>();
     claims.put("email", user.getEmail());
-    claims.put("type", EStatus.ACCOUNT_REGISTRATION_VERIFICATION);
+    claims.put("type", EStatus.ACCOUNT_ACTIVATION);
 
     String token = tokenService.generateToken(claims, user.getUsername(), 24);
+
     String url = request.getScheme() + "://" +
         request.getServerName() + ":" +
         request.getServerPort() +
-        "/api/auth/verify-email?token=" + token;
+        "/api/auth/activate-account?token=" + token;
+
     emailService.sendText(
         user.getEmail(),
-        "Registration Confirmation",
-        "URL" + "\n\n" + url);
+        "Activate your account",
+        "Activate your account" + "\n\n" + url);
   }
 
   private void setRefreshCookie(HttpServletResponse response, User user) {
-    String token = tokenService.generateToken(
-        Map.of("role", user.getRole()),
-        user.getUsername(),
-        1440 // 1 day
-    );
-
-    ResponseCookie cookie = ResponseCookie
-        .from("refresh_token", token)
-        .httpOnly(true)
-        .secure(true)
-        .sameSite("Lax")
-        .path("/")
-        .maxAge(Duration.ofDays(1))
-        .build();
-
-    response.addHeader("Set-Cookie", cookie.toString());
+    response.addHeader("Set-Cookie", tokenService.getRefreshCookie(user));
   }
 
   public String generateAccessToken(User user) {
-    return tokenService.generateToken(Map.of("role", user.getRole()), user.getUsername(), 15);
+    return tokenService.getAccessToken(user);
+  }
+
+  public void logout(HttpServletResponse response) {
+    ResponseCookie cookie = ResponseCookie
+        .from("refresh_token", "")
+        .path("/")
+        .maxAge(0)
+        .build();
+
+    response.addHeader("Set-Cookie", cookie.toString());
   }
 }

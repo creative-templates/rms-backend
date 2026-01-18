@@ -1,6 +1,5 @@
 package com.restaurant.ms.auth.payloads;
 
-import com.restaurant.ms.core.annotations.PasswordMatches;
 import com.restaurant.ms.core.annotations.ValidEmail;
 import com.restaurant.ms.core.models.User;
 import com.restaurant.ms.core.roles.ERole;
@@ -10,8 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
-@PasswordMatches(passwordField = "password", confirmPasswordField = "confirmPassword")
-public class RegisterAccountDto {
+public class CreateAccountDto {
   @NotBlank
   private String firstname;
 
@@ -25,17 +23,12 @@ public class RegisterAccountDto {
   @NotBlank
   private String username;
 
-  @NotBlank
-  private String password;
-
-  @NotBlank
-  private String confirmPassword;
-
   @NotNull
   private ERole role = ERole.CUSTOMER;
 
-
   private String tel;
+
+  private String profilePicture;
 
   public User toUser() {
     return new User(
@@ -44,9 +37,11 @@ public class RegisterAccountDto {
         lastname,
         email,
         username,
-        password,
+        null,
         role,
         tel,
-        false);
+        false,
+        profilePicture,
+      false);
   }
 }
