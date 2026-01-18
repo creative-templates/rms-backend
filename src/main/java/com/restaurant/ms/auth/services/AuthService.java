@@ -24,7 +24,6 @@ import com.restaurant.ms.core.models.User;
 import com.restaurant.ms.core.repositories.UserRepository;
 import com.restaurant.ms.core.services.EmailService;
 import com.restaurant.ms.core.services.TokenService;
-import com.restaurant.ms.core.utils.OtpCode;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -40,8 +39,7 @@ public class AuthService {
   private final AuthenticationManager authenticationManager;
   private final VerificationCodeRepository verificationCodeRepository;
 
-  public AuthenticatedUserDto register(RegisterAccountDto dto, HttpServletRequest request,
-      HttpServletResponse response) {
+  public void createUser(RegisterAccountDto dto, HttpServletRequest request) {
     if (userRepository.findByUsername(dto.getUsername()) != null) {
       throw new GeneralException("Username already exists");
     }
@@ -51,31 +49,17 @@ public class AuthService {
     userRepository.save(user);
 
     sendVerificationEmail(user, request);
-
-    setRefreshCookie(response, user);
-    String accessToken = generateAccessToken(user);
-
-    Authentication authentication = authenticationManager
-        .authenticate(
-            new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
-
-    SecurityContextHolder.getContext().setAuthentication(authentication);
-
-    return new AuthenticatedUserDto(user, accessToken);
   }
 
   public AuthenticatedUserDto login(LoginAccountDto dto, HttpServletResponse response) {
-    authenticationManager
+    Authentication authentication = authenticationManager
         .authenticate(
             new UsernamePasswordAuthenticationToken(dto.getUsername(), dto.getPassword()));
-    User user = userRepository.findByUsername(dto.getUsername());
+    User user = userRepository.findByUsername(dto.getUsername())
+        .orElseThrow(() -> new GeneralException("Invalid Credentails"));
 
     setRefreshCookie(response, user);
     String accessToken = generateAccessToken(user);
-
-    Authentication authentication = authenticationManager
-        .authenticate(
-            new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -87,32 +71,37 @@ public class AuthService {
       throw new GeneralException("Token expired");
     }
 
-    User user = userRepository.findByUsername(tokenService.extractUsername(token));
+    User user = userRepository.findByUsername(tokenService.extractUsername(token))
+        .orElseThrow(() -> new GeneralException("Invalid token"));
+
     user.setVerifiedEmail(true);
     userRepository.save(user);
   }
 
   public void forgetPassword(String username) {
-    User user = userRepository.findByUsername(username);
+    User user = userRepository.findByUsername(username).orElse(null);
+
     if (user == null)
       return;
 
-    String otp = OtpCode.generateOtp();
+    verificationCodeRepository.deleteAllByUserAndType(user, EStatus.FORGOT_PASSWORD);
 
-    VerificationCode verificationCode = VerificationCode.create(username, EStatus.FORGOT_PASSWORD);
+    VerificationCode verificationCode = VerificationCode.create(user, EStatus.FORGOT_PASSWORD);
     verificationCodeRepository.save(verificationCode);
 
     emailService.sendText(
         user.getEmail(),
         "Forget password",
-        "Your OTP is: " + otp);
+        "Your OTP is: " + verificationCode.getCode());
   }
 
   public void verifyOtp(String username, String code) {
-    VerificationCode verificationCode = verificationCodeRepository.findByUsernameAndCodeAndType(username, code,
+    User user = userRepository.findByUsername(username).orElseThrow(() -> new GeneralException("Invalid otp"));
+    
+    VerificationCode verificationCode = verificationCodeRepository.findByUserAndCodeAndType(user, code,
         EStatus.FORGOT_PASSWORD);
 
-    if (verificationCode == null)
+    if (verificationCode == null || verificationCode.isExpired())
       throw new GeneralException("Invalid OTP");
 
     verificationCode.setType(EStatus.RESET_PASSWORD);
@@ -120,16 +109,15 @@ public class AuthService {
   }
 
   public void resetPassword(String username, String password, String code) {
-    VerificationCode verificationCode = verificationCodeRepository.findByUsernameAndCodeAndType(
-        username,
-        code,
+    User user = userRepository.findByUsername(username).orElseThrow(() -> new GeneralException("Invalid token"));
+    
+    VerificationCode verificationCode = verificationCodeRepository.findByUserAndCodeAndType(user, code,
         EStatus.RESET_PASSWORD);
 
     if (verificationCode == null) {
       throw new GeneralException("Invalid token");
     }
 
-    User user = userRepository.findByUsername(username);
     user.setPassword(passwordEncoder.encode(password));
     userRepository.save(user);
 
@@ -142,11 +130,8 @@ public class AuthService {
     }
 
     String username = tokenService.extractUsername(token);
-    User user = userRepository.findByUsername(username);
-
-    if (user == null) {
-      throw new GeneralException("Unauthorized", HttpStatus.UNAUTHORIZED);
-    }
+    User user = userRepository.findByUsername(username)
+        .orElseThrow(() -> new GeneralException("Unauthorized", HttpStatus.UNAUTHORIZED));
 
     return new AuthenticatedUserDto(user, generateAccessToken(user));
   }
@@ -168,10 +153,6 @@ public class AuthService {
   }
 
   private void setRefreshCookie(HttpServletResponse response, User user) {
-    Map<String, Object> claims = new HashMap<>();
-    claims.put("username", user.getUsername());
-    claims.put("role", user.getRole());
-
     String token = tokenService.generateToken(
         Map.of("role", user.getRole()),
         user.getUsername(),
@@ -191,10 +172,6 @@ public class AuthService {
   }
 
   public String generateAccessToken(User user) {
-    Map<String, Object> claims = new HashMap<>();
-    claims.put("username", user.getUsername());
-    claims.put("role", user.getRole());
-
-    return tokenService.generateToken(claims, user.getUsername(), 15);
+    return tokenService.generateToken(Map.of("role", user.getRole()), user.getUsername(), 15);
   }
 }

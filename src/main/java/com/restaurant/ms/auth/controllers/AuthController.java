@@ -1,6 +1,7 @@
 package com.restaurant.ms.auth.controllers;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,13 +29,12 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
   private final AuthService authService;
 
-  @PostMapping("register")
-  public ResponseEntity<GeneralResponse> register(
-      @Valid @RequestBody RegisterAccountDto dto,
-      HttpServletRequest request,
-      HttpServletResponse response) {
-    AuthenticatedUserDto data = authService.register(dto, request, response);
-    return ResponseEntity.ok().body(new GeneralResponse(data));
+  @PostMapping("admin/create-user")
+  @PreAuthorize("hasRole('SUPER_ADMIN')")
+  public ResponseEntity<GeneralResponse> createUser(@Valid @RequestBody RegisterAccountDto dto,
+      HttpServletRequest request) {
+    authService.createUser(dto, request);
+    return ResponseEntity.ok().body(new GeneralResponse("Account is created"));
   }
 
   @GetMapping("verify-email")

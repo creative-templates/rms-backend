@@ -1,5 +1,7 @@
 package com.restaurant.ms.auth.payloads;
 
+import java.util.UUID;
+
 import com.restaurant.ms.core.models.User;
 import com.restaurant.ms.core.roles.ERole;
 
@@ -7,7 +9,7 @@ import lombok.Getter;
 
 @Getter
 public class AuthenticatedUserDto {
-  private String id;
+  private UUID id;
   private String firstname;
   private String lastname;
   private String email;
