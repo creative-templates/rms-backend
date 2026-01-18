@@ -6,9 +6,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.TransactionSystemException;
 
-import com.restaurant.ms.core.exceptions.GeneralException;
 import com.restaurant.ms.core.models.User;
 import com.restaurant.ms.core.repositories.UserRepository;
 
@@ -30,16 +28,11 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     OAuth2UserInfo userInfo = new GoogleOAuth2UserInfo(principal);
 
-    User user = userRepository.findByUsername(userInfo.getEmail())
-        .orElseGet(() -> {
-          try {
-            return userRepository.save(userInfo.getUser());
-          } catch (TransactionSystemException ex) {
-            throw new GeneralException(ex.getMessage());
-          } catch (Exception ex) {
-            throw new GeneralException(ex.getMessage());
-          }
-        });
+    User user = userRepository.findByUsername(userInfo.getEmail()).orElse(null);
+
+    if (user == null) {
+      user = userRepository.save(userInfo.getUser());
+    }
 
     response.addHeader("Set-Cookie", tokenService.getRefreshCookie(user));
 

@@ -67,8 +67,6 @@ public class AuthService {
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
 
-    System.out.println("Roles: " + authentication.getAuthorities());
-
     return new AuthenticatedUserDto(user, accessToken);
   }
 

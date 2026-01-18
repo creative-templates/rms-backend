@@ -39,6 +39,11 @@ public class GoogleOAuth2UserInfo implements OAuth2UserInfo {
     user.setFirstName(principal.getAttribute("given_name"));
     user.setLastName(principal.getAttribute("family_name"));
     user.setProfilePictire(principal.getAttribute("picture"));
+    user.setUsername(principal.getAttribute("sub"));
+    user.setEnabled(true);
+
+    Boolean emailVerified = principal.getAttribute("email_verified");
+    user.setVerifiedEmail(Boolean.TRUE.equals(emailVerified));
 
     return user;
   }
