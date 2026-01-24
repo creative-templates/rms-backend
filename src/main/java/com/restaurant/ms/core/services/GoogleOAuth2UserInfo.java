@@ -2,6 +2,7 @@ package com.restaurant.ms.core.services;
 
 import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
 
+import com.restaurant.ms.auth.enums.EAuthProvider;
 import com.restaurant.ms.core.models.User;
 
 public class GoogleOAuth2UserInfo implements OAuth2UserInfo {
@@ -32,14 +33,20 @@ public class GoogleOAuth2UserInfo implements OAuth2UserInfo {
   }
 
   @Override
+  public String getUsername() {
+    return principal.getAttribute("sub");
+  }
+
+  @Override
   public User getUser() {
     User user = new User();
 
     user.setEmail(principal.getAttribute("email"));
     user.setFirstName(principal.getAttribute("given_name"));
     user.setLastName(principal.getAttribute("family_name"));
-    user.setProfilePictire(principal.getAttribute("picture"));
+    user.setProfilePicture(principal.getAttribute("picture"));
     user.setUsername(principal.getAttribute("sub"));
+    user.setAuthProvider(EAuthProvider.GOOGLE);
     user.setEnabled(true);
 
     Boolean emailVerified = principal.getAttribute("email_verified");

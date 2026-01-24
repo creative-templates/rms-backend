@@ -1,8 +1,9 @@
 package com.restaurant.ms.auth.payloads;
 
+import com.restaurant.ms.auth.enums.EAuthProvider;
 import com.restaurant.ms.core.annotations.ValidEmail;
+import com.restaurant.ms.core.models.Role;
 import com.restaurant.ms.core.models.User;
-import com.restaurant.ms.core.roles.ERole;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -24,24 +25,24 @@ public class CreateAccountDto {
   private String username;
 
   @NotNull
-  private ERole role = ERole.CUSTOMER;
+  private Role role;
 
   private String tel;
 
   private String profilePicture;
 
   public User toUser() {
-    return new User(
-        null,
-        firstname,
-        lastname,
-        email,
-        username,
-        null,
-        role,
-        tel,
-        false,
-        profilePicture,
-      false);
+    User user = new User();
+    user.setAuthProvider(EAuthProvider.LOCAL);
+    user.setFirstName(firstname);
+    user.setLastName(lastname);
+    user.setEmail(email);
+    user.setEnabled(false);
+    user.setRole(role);
+    user.setUsername(username);
+    user.setPassword(null);
+    user.setVerifiedEmail(false);
+
+    return user;
   }
 }

@@ -28,7 +28,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     OAuth2UserInfo userInfo = new GoogleOAuth2UserInfo(principal);
 
-    User user = userRepository.findByUsername(userInfo.getEmail()).orElse(null);
+    User user = userRepository.findByUsername(userInfo.getUsername()).orElse(null);
 
     if (user == null) {
       user = userRepository.save(userInfo.getUser());

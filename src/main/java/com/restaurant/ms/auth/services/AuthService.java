@@ -177,4 +177,8 @@ public class AuthService {
 
     response.addHeader("Set-Cookie", cookie.toString());
   }
+
+  public User getAuthenticatedUser() {
+    return (User) SecurityContextHolder.getContext().getAuthentication();
+  }
 }

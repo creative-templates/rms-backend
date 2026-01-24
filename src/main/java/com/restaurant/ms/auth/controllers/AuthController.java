@@ -31,7 +31,7 @@ public class AuthController {
   private final AuthService authService;
 
   @PostMapping("admin/create-user")
-  @PreAuthorize("hasRole('SUPER_ADMIN')")
+  @PreAuthorize("hasAuthority(T(com.restaurant.ms.core.roles.EPermission).CREATE_USER.name())")
   public ResponseEntity<GeneralResponse> createUser(@Valid @RequestBody CreateAccountDto dto,
           HttpServletRequest request) {
     authService.createUser(dto, request);
